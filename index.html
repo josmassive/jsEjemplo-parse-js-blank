@@ -1,0 +1,274 @@
+<!doctype html>
+
+<html>
+<head>
+  <meta charset="utf-8">
+
+  <title>Mi aplicacion en parse</title>
+  <meta name="description" content="Mi aplicacion en parse">
+  <meta name="viewport" content="width=device-width">
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+  <script type="text/javascript" src="http://www.parsecdn.com/js/parse-1.5.0.min.js"></script><!-- esta es la importacion de parse-->
+
+   
+
+
+</head>
+
+<body>
+  
+  <div id="main">
+    
+    <!--este bloque se crea para que aqui aparezca el nombre del usuario logeado-->
+    <div id="current-user"></div>
+    
+  <!-- se crea panel para login-->
+    <h1>Log In!</h1>
+    <form id="login">
+      <p>nombre de usuario<input id="login-name" type="text"></p>
+      <p>pasword<input id="login-password" type="password"></p>
+      <p><input id="login-submit" type="submit"></p>
+    </form>
+
+  <!--se crea panel para logout -->
+  <h1>Log out</h1>
+    <div>
+       <button id="logout">Log out</button>
+    </div>
+    
+
+   <!-- AQUI SE CREAN LOS OBJETOS TXT PARA CAPTURAR LOAS CADENAS DE SIGNUP-->
+    <h1>Sign Up!</h1>
+    <form id="signup-form">
+    <p>nombre de usuario<input id="signup-name" type="text"></p>
+    <p>pasword<input id="signup-password" type="password"></p>
+    <p><input id="signup-submit" type="submit"></p>
+    </form>
+
+    <!-- se crean objetos de la pagina para capturar post-->
+    <h1>crea tu post con parse!</h1>
+    <form id="classPrueba-form">
+        <p>Titulo del post<input id="classPrueba-colTituloPost" type="text"></p>
+        <p>contenido del post<textarea id="classPrueba-colContenidoPost"></textarea></p>
+        <p><input id="post-file" type="file"></p>
+        <p><input id="classPrueba-enviar" type="submit"></p>
+    </form>
+
+    
+    <!-- etiquetas que reciben los datos al lanzar el evento click sobre el titulo del post-->
+    <div id="post-detail" data-id="">
+        <h1 id="post-details-title"></h1>
+        <small id="post-detail-author"></small>
+        <p id="post-detail-content"></p>
+    </div>
+
+    <!--<form id="post-detail-form">
+           <textarea id="post-comment"></textarea>
+           <input id="post-detail-content" type="submit">
+    </form>  -->
+
+    <!-- se crea contenedor para projectos en muro -->
+    <ul id="list-post">
+        
+           <!-- list of post
+           <li>
+                <H3>colTituloPost
+                <p>colContenidoPost
+           -->
+    </ul>
+
+
+  </div>
+
+
+  <script type="text/javascript">
+
+    //se introduce la clave de proyecto de del quickstart de parse
+    Parse.initialize("ygmaUW9VmAi7sOrYxR892FRjs8W4O6yjgNz3gEco", "DAa5WxaSe6QfJ2AbRBVqluJovPx9qblENG16XHpE");
+    var classPrueba = Parse.Object.extend("classPrueba");//esta linea crea el objeto para guardar los post
+    
+
+
+    //se crea funcion para mostrar el nombre de usuario que hizo login
+    function checkLogin(){
+        if(Parse.User.current()){
+          //console.log("Logged in!"+Parse.User.current().get("username"));
+         $("#current-user").html("User:"+Parse.User.current().get("username"));
+        }else{
+          $("#current-user").html("");
+        }
+    }
+    checkLogin();
+
+    //se crea metodo para logout
+    $("#logout").click(function(event){
+          Parse.User.logOut();
+          checkLogin();
+    });
+
+    //se crea metodo para login
+    $("#login").submit(function(event){
+         event.preventDefault();
+
+         var name = $("#login-name").val();
+         var pass = $("#login-password").val();
+
+         Parse.User.logIn(name, pass, {
+                  success:function(user){
+                          //console.log("log in success!");
+                         checkLogin();
+                  }, error:function(user, error){
+                          console.log("Log in Error:"+error.message);
+                     }
+         });
+      });
+
+
+    //se crea metodo para el registro de usuario signup en  la pagina
+    $("#signup-form").submit(function(event){
+      event.preventDefault();
+
+       var name = $("#signup-name").val();
+       var pass = $("#signup-password").val();
+
+       var user = new Parse.User();//se crea nueva clase en parse llamada User
+       user.set("username", name);// se crea columna llamada username que almacenara name
+       user.set("password", pass);//se crea columna llamada password que almacenara pass
+
+       user.signUp(null, {
+          success: function(user){
+                 checkLogin(); 
+          }, error:function(user, error){
+               console.log("signup error:"+error.message);
+              }
+          });
+    });
+
+    
+    //se crea metodo para que el cuando se de click en el hipervinculo del titulo el enlace que esta hubicado en el div list-post rellene el formulario con los detalles del post
+    $("#list-post").on("click", "a", function(event){
+        event.preventDefault();
+        var id = $(this).attr("href");
+        var query = new Parse.Query(classPrueba);
+        query.equalTo("objectId", id);
+        query.include("user");
+        query.find({
+          success: function(results){
+              var title = results[0].get("colTituloPost");
+              var content = results[0].get("colContenidoPost");
+              var user = results[0].get("user");
+              var username = user.get("username");
+              var id = results[0].id;
+              $("#post-details-title").html(title);
+              $("#post-detail-author").html(username);
+              $("#post-detail-content").html(content);
+              $("#post-detail").attr("data-id", id);
+    
+          }, error: function(error){
+               console.log(error.message);
+        } });
+    });
+
+
+    // se crea metodo para obtener mensajes de post de parse y cargar el muro
+    function getPosts(){
+      
+      var query = new Parse.Query(classPrueba);//se crea variable con propiedades de classprueba
+      // se crean consultas 
+      query.include("user");//incluyeme el puntero user de la clase classprueba
+      query.find({
+        success: function(results){
+                    var output = "";
+                  for(var i in results){
+                    var colTitulo = results[i].get("colTituloPost");
+                    var colContenido = results[i].get("colContenidoPost");
+                    var user = results[i].get("user");//de la variable user que es la calase User
+                    var username = user.get("username");//se hubica la columna username en la clase
+                    var id = results[i].id
+
+                  //se muestra en pantalla principal las imagenes subidas
+                   var img = "";
+                   if (results[i].get("file")) {
+                     var file = results[i].get("file");
+                     var url = file.url();
+                     console.log("url:"+url);
+                     img = "<img src=' "+url+ " ' >";
+                   }
+
+                    //console.log("TITULO:" + colTitulo);
+
+                   //se crean las etiquetas de salida en el muro  
+                    output += "<div>";
+                    //output += "<h3><a href='"+id+"'>"+colTitulo+"</a></h3>";
+                    output += "<h3><a href='http://www.google.com'>"+colTitulo+"</a></h3>";
+                    output += "<small>"+username+"</small>";//salida de username del post
+                    //output += "<br>";
+                    /*output += "<p>"+colContenido+"</p>";
+                    output += img;
+                    output += "</li>";
+                    output += "<br>";
+                    output += "<br>";*/
+                    output += "</div>";
+                  }
+                  $("#list-post").html(output);
+
+        }, error: function(error){
+               console.log("Query Error:" + error.message);
+           }
+      });
+    }
+    getPosts();
+
+    // se crea metodo para almacenar post en parse
+    $("#classPrueba-form").submit(function(event){
+         event.preventDefault();
+          var colTituloPost = $("#classPrueba-colTituloPost").val();
+          var colContenidoPost = $("#classPrueba-colContenidoPost").val();
+          var user = Parse.User.current();//con esta variable se asignara el id de usuario al cada post 
+
+
+          var newClassPrueba = new classPrueba();
+          newClassPrueba.set("colTituloPost", colTituloPost);
+          newClassPrueba.set("colContenidoPost", colContenidoPost);
+          newClassPrueba.set("user", user);//insertar el usuario en cada post
+
+          //almacenar imagen subida por el usuario video 10, aqui la el la parte final se rehubica el ultimo newclassprueba.save dentro de la condicion puesto que si no hay archivo que adjuntar se continua con el almacenamiento del post get file from for input
+          var fileElement = $("#post-file")[0];
+          var filePath = $("#post-file").val();
+          var fileName = filePath.split("\\").pop();
+
+            if(fileElement.files.length > 0){
+              var file = fileElement.files[0];
+              var newFile  = new Parse.File(fileName, file);
+              newFile.save({
+                  success:function(){
+
+                  }, error: function(file, error){
+                        console.log("File save Error: "+error.message);
+                  }
+
+              }).then(function(theFile){
+                   newClassPrueba.set("file", theFile);
+                   newClassPrueba.save({
+                      success: function(){
+                      }, error:function(error){
+                      console.log("Post save with File error:"+error.message);
+                         }
+                  });
+                });
+              } else{
+            //se continua con el almacenamiento del post este es el archivo que se rehubica dentro de la concion 
+                   newClassPrueba.save({
+                       success:function(){
+                   }, error: function(error){
+                         console.log("Error:"+error.message);
+                      }
+                   });
+                } 
+    });
+  </script>
+</body>
+
+</html>
